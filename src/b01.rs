@@ -34,12 +34,12 @@ pub fn run_slow(inp: &str) -> i64 {
 
         state = state.rem_euclid(100);
 
-        println!(
-            "Line: {}, State: {}, Zcount: {}",
-            read_modifier * multiplier,
-            state,
-            zero_count
-        );
+        // println!(
+        //     "Line: {}, State: {}, Zcount: {}",
+        //     read_modifier * multiplier,
+        //     state,
+        //     zero_count
+        // );
 
         // println!("Line: {}, State: {}, Zcount: {}", line, state, zero_count);
     }
@@ -76,9 +76,9 @@ pub fn run(inp: &str) -> i64 {
 
         state += modifier * multiplier;
         zero_count += state.div_euclid(100).abs();
-        let rem = state.rem_euclid(100);
-        state = rem;
-        if rem == 0 && multiplier == -1 {
+        state = state.rem_euclid(100);
+
+        if multiplier == -1 && state == 0 {
             zero_count += 1;
         }
 
@@ -97,11 +97,13 @@ pub fn run(inp: &str) -> i64 {
 fn test_sample() {
     for i in -10i64..10i64 {
         // print div and rem results
+        let i = i * 20;
         println!(
-            "i: {}, div: {}, rem: {}",
+            "i: {}, div: {}, rem: {}, rembasic: {}",
             i,
             i.div_euclid(100i64),
-            i.rem_euclid(100i64)
+            i.rem_euclid(100i64),
+            (i + 100) % 100
         );
     }
 

@@ -3,8 +3,11 @@ name = "aoc"
 version = "0.1.0"
 edition = "2024"
 
+[lib]
+bench = false
+
 [[bench]]
-name = "my_benchmark"
+name = "aoc_bench"
 harness = false
 path = "src/bench.rs"
 
