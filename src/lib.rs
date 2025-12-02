@@ -1,8 +1,8 @@
-pub mod b01;
-pub use b01::{SAMPLE_OUTPUT, run};
-pub const DAY: &str = "01";
+pub mod b02;
+pub use b02::{SAMPLE_OUTPUT, run};
+pub const DAY: &str = "02";
 pub const PART: &str = "b";
-pub const INPUT: &str = include_str!("../input/01.txt");
+pub const INPUT: &str = include_str!("../input/02.txt");
 
 pub fn main() {
     let sample_input = std::fs::read_to_string(format!("input/{}_sample.txt", DAY)).unwrap();
