@@ -1,10 +1,9 @@
-pub mod b02;
-pub use b02::{SAMPLE_OUTPUT, run};
-pub const DAY: &str = "02";
+#![feature(portable_simd)]
+pub mod b03;
+pub use b03::{run, SAMPLE_OUTPUT};
+pub const DAY: &str = "03";
 pub const PART: &str = "b";
-pub const INPUT: &str = include_str!("../input/02.txt");
-
-pub fn main() {
+pub const INPUT: &str = include_str!("../input/03.txt");pub fn main() {
     let sample_input = std::fs::read_to_string(format!("input/{}_sample.txt", DAY)).unwrap();
     let sample_result = run(sample_input.as_str());
     println!("Sample result day {}{}: {}", DAY, PART, sample_result);
