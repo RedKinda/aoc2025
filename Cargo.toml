@@ -16,3 +16,4 @@ criterion = { version = "0.8" }
 
 [dependencies]
 rayon = "1.11.0"
+smallvec = "1"
