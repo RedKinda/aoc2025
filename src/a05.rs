@@ -48,92 +48,258 @@ pub fn run_naive(inp: &str) -> i64 {
     sum_valid
 }
 
-use std::simd::{Mask, Simd, cmp::SimdPartialOrd as _};
+use std::{
+    hint::{black_box, unreachable_unchecked},
+    simd::{Mask, Simd, cmp::SimdPartialOrd as _, num::SimdUint as _, u8x8, u8x16, u64x8, u64x16},
+};
+
+fn read_number_fast(input_bytes: &[u8]) -> u64 {
+    let len = input_bytes.len();
+
+    #[inline]
+    fn parse_int_simd_16(input_bytes: &[u8]) -> u64 {
+        let mut bytes = [0u8; 16];
+        bytes[..input_bytes.len()].copy_from_slice(input_bytes);
+        let digits = u8x16::from_array(bytes);
+        let zero = u8x16::splat(b'0');
+        let values = digits - zero;
+
+        let multipliers = match input_bytes.len() {
+            3 => u64x16::from_array([100, 10, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]),
+            4 => u64x16::from_array([1000, 100, 10, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]),
+            5 => u64x16::from_array([10000, 1000, 100, 10, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]),
+            6 => u64x16::from_array([
+                100000, 10000, 1000, 100, 10, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            ]),
+            7 => u64x16::from_array([
+                1000000, 100000, 10000, 1000, 100, 10, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            ]),
+            8 => u64x16::from_array([
+                10000000, 1000000, 100000, 10000, 1000, 100, 10, 1, 0, 0, 0, 0, 0, 0, 0, 0,
+            ]),
+            9 => u64x16::from_array([
+                100000000, 10000000, 1000000, 100000, 10000, 1000, 100, 10, 1, 0, 0, 0, 0, 0, 0, 0,
+            ]),
+            10 => u64x16::from_array([
+                1000000000, 100000000, 10000000, 1000000, 100000, 10000, 1000, 100, 10, 1, 0, 0, 0,
+                0, 0, 0,
+            ]),
+            11 => u64x16::from_array([
+                10000000000,
+                1000000000,
+                100000000,
+                10000000,
+                1000000,
+                100000,
+                10000,
+                1000,
+                100,
+                10,
+                1,
+                0,
+                0,
+                0,
+                0,
+                0,
+            ]),
+            12 => u64x16::from_array([
+                100000000000,
+                10000000000,
+                1000000000,
+                100000000,
+                10000000,
+                1000000,
+                100000,
+                10000,
+                1000,
+                100,
+                10,
+                1,
+                0,
+                0,
+                0,
+                0,
+            ]),
+            13 => u64x16::from_array([
+                1000000000000,
+                100000000000,
+                10000000000,
+                1000000000,
+                100000000,
+                10000000,
+                1000000,
+                100000,
+                10000,
+                1000,
+                100,
+                10,
+                1,
+                0,
+                0,
+                0,
+            ]),
+            14 => u64x16::from_array([
+                10000000000000,
+                1000000000000,
+                100000000000,
+                10000000000,
+                1000000000,
+                100000000,
+                10000000,
+                1000000,
+                100000,
+                10000,
+                1000,
+                100,
+                10,
+                1,
+                0,
+                0,
+            ]),
+            15 => u64x16::from_array([
+                100000000000000,
+                10000000000000,
+                1000000000000,
+                100000000000,
+                10000000000,
+                1000000000,
+                100000000,
+                10000000,
+                1000000,
+                100000,
+                10000,
+                1000,
+                100,
+                10,
+                1,
+                0,
+            ]),
+            16 => u64x16::from_array([
+                1000000000000000,
+                100000000000000,
+                10000000000000,
+                1000000000000,
+                100000000000,
+                10000000000,
+                1000000000,
+                100000000,
+                10000000,
+                1000000,
+                100000,
+                10000,
+                1000,
+                100,
+                10,
+                1,
+            ]),
+            _ => unsafe { unreachable_unchecked() },
+        };
+
+        let values_u64 = values.cast::<u64>();
+        let products = values_u64 * multipliers;
+        products.reduce_sum()
+    }
+
+    match len {
+        0 => 0,
+        1 => (input_bytes[0] - b'0') as u64,
+        2 => {
+            let d0 = (input_bytes[0] - b'0') as u64;
+            let d1 = (input_bytes[1] - b'0') as u64;
+            d0 * 10 + d1
+        }
+        3..=16 => parse_int_simd_16(input_bytes),
+        _ => unsafe { unreachable_unchecked() },
+    }
+}
 
 pub fn run(inp: &str) -> i64 {
-    // let mut ranges: smallvec::SmallVec<[(i64, i64); 256]> = smallvec::SmallVec::new();
+    unsafe {
+        const ARRLEN: usize = 3;
 
-    // for line in inp.lines() {
-    //     if line.is_empty() {
-    //         break;
-    //     }
-    //     let mut parts = line.split('-');
-    //     let start: i64 = parts.next().unwrap().parse().unwrap();
-    //     let end: i64 = parts.next().unwrap().parse().unwrap();
+        let mut range_starts: [Simd<u64, 64>; ARRLEN] = [Simd::splat(u64::MAX); ARRLEN];
+        let mut range_ends: [Simd<u64, 64>; ARRLEN] = [Simd::splat(0); ARRLEN];
 
-    //     debug_assert!(end >= start);
+        let input_bytes = inp.as_bytes();
+        let mut ind = 0;
 
-    //     ranges.push((start, end + 1));
-    // }
-
-    const ARRLEN: usize = 3;
-
-    let mut range_starts: [Simd<u64, 64>; ARRLEN] = [Simd::splat(u64::MAX); ARRLEN];
-    let mut range_ends: [Simd<u64, 64>; ARRLEN] = [Simd::splat(0); ARRLEN];
-
-    let mut input_bytes = inp.as_bytes().iter();
-    let mut char = *input_bytes.next().unwrap();
-    let mut it = 0;
-    loop {
-        if char == b'\n' {
-            char = *input_bytes.next().unwrap();
-            if char == b'\n' {
+        let mut it = 0;
+        loop {
+            if *input_bytes.get_unchecked(ind) == b'\n' {
+                // if input_bytes[ind - 1] == b'\n' {
                 break;
+                // }
+                // ind += 1;
             }
+
+            // let mut parts = inp.split('-');
+            // let start: i64 = parts.next().unwrap().parse().unwrap();
+            // let end: i64 = parts.next().unwrap().parse().unwrap();
+
+            let start_num_ind = ind;
+            while *input_bytes.get_unchecked(ind) != b'-' {
+                ind += 1;
+            }
+            let start = read_number_fast(&input_bytes.get_unchecked(start_num_ind..ind));
+
+            ind += 1; // skip '-'
+            let end_num_ind = ind;
+            while *input_bytes.get_unchecked(ind) != b'\n' {
+                ind += 1;
+            }
+            let end = read_number_fast(&input_bytes.get_unchecked(end_num_ind..ind));
+
+            debug_assert!(end >= start);
+            // ranges.push((start, end + 1));
+            let simd_index = it / 64;
+            let lane_index = it % 64;
+
+            // range_starts[simd_index][lane_index] = start as u64;
+            *range_starts
+                .get_unchecked_mut(simd_index)
+                .as_mut_array()
+                .get_unchecked_mut(lane_index) = start;
+            // range_ends[simd_index][lane_index] = (end + 1) as u64;
+            *range_ends
+                .get_unchecked_mut(simd_index)
+                .as_mut_array()
+                .get_unchecked_mut(lane_index) = end + 1;
+
+            it += 1;
+            ind += 1; // skip '\n'
         }
 
-        // let mut parts = inp.split('-');
-        // let start: i64 = parts.next().unwrap().parse().unwrap();
-        // let end: i64 = parts.next().unwrap().parse().unwrap();
+        let mut matching = 0;
 
-        let mut start = 0;
-        while char != b'-' {
-            start = start * 10 + (char - b'0') as i64;
-            char = *input_bytes.next().unwrap();
+        while input_bytes.len() > ind {
+            // let mut char = *byte;
+            // while char != b'\n' {
+            //     ingredient = ingredient * 10 + (char - b'0') as i64;
+            //     char = *input_bytes.next().unwrap_unchecked();
+            // }
+
+            let ingredient_num_ind = ind;
+            while *input_bytes.get_unchecked(ind) != b'\n' {
+                ind += 1;
+            }
+            let ingredient = black_box(read_number_fast(&input_bytes.get_unchecked(ingredient_num_ind..ind)));
+            ind += 1; // skip '\n'
+
+            // let ingredient_simd = Simd::splat(ingredient);
+
+            // let mut gather_mask = Mask::splat(false);
+
+            // for i in 0..ARRLEN {
+            //     let ge_start = ingredient_simd.simd_ge(range_starts[i]);
+            //     let lt_end = ingredient_simd.simd_lt(range_ends[i]);
+            //     gather_mask |= ge_start & lt_end;
+            // }
+
+            // if gather_mask.any() {
+            //     matching += 1;
+            // }
         }
-        char = *input_bytes.next().unwrap(); // skip '-'
 
-        let mut end = 0;
-        while char != b'\n' {
-            end = end * 10 + (char - b'0') as i64;
-            char = *input_bytes.next().unwrap();
-        }
-
-        debug_assert!(end >= start);
-        // ranges.push((start, end + 1));
-        let simd_index = it / 64;
-        let lane_index = it % 64;
-
-        range_starts[simd_index][lane_index] = start as u64;
-        range_ends[simd_index][lane_index] = (end + 1) as u64;
-        it += 1;
+        matching
     }
-
-    let mut matching = 0;
-
-    while let Some(byte) = input_bytes.next() {
-        let mut ingredient = 0;
-        let mut char = *byte;
-        while char != b'\n' {
-            ingredient = ingredient * 10 + (char - b'0') as i64;
-            char = *input_bytes.next().unwrap();
-        }
-
-        let ingredient_u64 = ingredient as u64;
-        let ingredient_simd = Simd::splat(ingredient_u64);
-
-        let mut gather_mask = Mask::splat(false);
-
-        for i in 0..ARRLEN {
-            let ge_start = ingredient_simd.simd_ge(range_starts[i]);
-            let lt_end = ingredient_simd.simd_lt(range_ends[i]);
-            gather_mask |= ge_start & lt_end;
-        }
-
-        if gather_mask.any() {
-            matching += 1;
-        }
-    }
-
-    matching
 }
