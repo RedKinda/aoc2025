@@ -1,8 +1,8 @@
 #![feature(portable_simd)]
-pub mod b06;
-pub use b06::{SAMPLE_OUTPUT, run};
+pub mod a06;
+pub use a06::{SAMPLE_OUTPUT, run};
 pub const DAY: &str = "06";
-pub const PART: &str = "b";
+pub const PART: &str = "a";
 pub const INPUT: &str = include_str!("../input/06.txt");
 
 pub fn main() {
