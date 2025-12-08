@@ -1,3 +1,7 @@
+use std::collections::BinaryHeap;
+
+use smallvec::SmallVec;
+
 pub const SAMPLE_OUTPUT: i64 = 40;
 
 /*
@@ -26,8 +30,41 @@ pub const SAMPLE_OUTPUT: i64 = 40;
 
 */
 
+struct Distance {
+    dist: f64,
+    i: usize,
+    j: usize,
+}
+
+impl PartialEq for Distance {
+    fn eq(&self, other: &Self) -> bool {
+        self.dist == other.dist
+    }
+}
+
+impl Eq for Distance {}
+
+impl PartialOrd for Distance {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        self.dist.partial_cmp(&other.dist).map(|v| v.reverse())
+    }
+}
+
+impl Ord for Distance {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.partial_cmp(other).unwrap()
+    }
+}
+
+impl Distance {
+    fn new(dist: f64, i: usize, j: usize) -> Self {
+        Self { dist, i, j }
+    }
+}
+
 pub fn run(inp: &str) -> i64 {
-    let mut points = vec![];
+    // let mut points = vec![];
+    let mut points: SmallVec<[(i64, i64, i64); 1024]> = SmallVec::new();
 
     for line in inp.lines() {
         let mut nums = line.split(',').map(|s| s.parse::<i64>().unwrap());
@@ -38,7 +75,9 @@ pub fn run(inp: &str) -> i64 {
     }
 
     // precompute all distances
-    let mut distances: Vec<(f64, usize, usize)> = vec![];
+    let mut distances: BinaryHeap<Distance> =
+        BinaryHeap::with_capacity(points.len() * (points.len() - 1) / 2);
+
     for (i, p1) in points.iter().enumerate() {
         for (j, p2) in points.iter().enumerate().skip(i + 1) {
             // let dist = (p1.0 - p2.0).abs() * (p1.1 - p2.1).abs() * (p1.2 - p2.2).abs();
@@ -48,7 +87,7 @@ pub fn run(inp: &str) -> i64 {
                 + (p1.2 - p2.2).pow(2) as f64)
                 .sqrt();
 
-            distances.push((dist, i, j));
+            distances.push(Distance::new(dist, i, j));
         }
     }
 
@@ -60,14 +99,13 @@ pub fn run(inp: &str) -> i64 {
 
     // when we merge two points, we set the union value of one to the index of the other, so root one is always usize::MAX
     // then to check if they are in the same union, we follow the chain of indices until we reach usize::MAX
-    let mut unions: Vec<usize> = vec![usize::MAX; points.len()];
-
-    // sort distances by distance
-    distances.sort_unstable_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
+    // let mut unions: Vec<usize> = vec![usize::MAX; points.len()]
+    let mut unions: SmallVec<[usize; 1024]> = SmallVec::with_capacity(points.len());
+    unions.resize(points.len(), usize::MAX);
 
     // we unionize distinct unions until we made N connections
     let mut connections = 0;
-    for (dist, i, j) in distances {
+    while let Some(Distance { dist, i, j }) = distances.pop() {
         // find root of i
         let mut root_i = i;
         while unions[root_i] != usize::MAX {
@@ -93,7 +131,8 @@ pub fn run(inp: &str) -> i64 {
     }
 
     // we wanna find the size of 3 largest unions
-    let mut union_sizes: Vec<(usize, usize)> = vec![];
+    // let mut union_sizes: Vec<(usize, usize)> = vec![];
+    let mut union_sizes: SmallVec<[(usize, usize); 1024]> = SmallVec::with_capacity(points.len());
     for (uind, _) in unions.iter().enumerate() {
         union_sizes.push((0, uind));
     }
@@ -102,17 +141,12 @@ pub fn run(inp: &str) -> i64 {
         // find root of uind
         let mut root = uind;
         while unions[root] != usize::MAX {
-            root = unions[root] as usize;
+            root = unions[root];
         }
         union_sizes[root].0 += 1;
     }
 
     union_sizes.retain(|(size, _)| *size > 0);
-
-    #[cfg(debug_assertions)]
-    if union_sizes.len() < 3 {
-        println!("Warning: less than 3 unions found");
-    }
 
     // sort union sizes descending
     union_sizes.sort_unstable_by_key(|(size, _)| std::cmp::Reverse(*size));
